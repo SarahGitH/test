@@ -1,0 +1,49 @@
+import RPi.GPIO as GPIO
+import time
+import os
+
+# Set up GPIO
+GPIO.setmode(GPIO.BCM)
+PIR_PIN = 4
+GPIO.setup(PIR_PIN, GPIO.IN)
+
+# File paths
+slideshow_file = "/path/to/slideshow.html"
+original_display_command = "xset dpms force on"
+sleep_display_command = "xset dpms force off"
+
+# Variables for timing
+motion_detected_time = 0
+no_motion_time = 0
+
+# Function to display slideshow and handle screen sleep
+def display_slideshow():
+    os.system(f"chromium-browser --kiosk {slideshow_file}")
+
+def original_display():
+    os.system(original_display_command)
+
+def sleep_display():
+    os.system(sleep_display_command)
+
+try:
+    while True:
+        if GPIO.input(PIR_PIN):
+            # Motion detected
+            motion_detected_time = time.time()
+            original_display()  # Display original content
+            no_motion_time = 0  # Reset no motion timer
+        else:
+            # No motion detected
+            no_motion_time = time.time() - motion_detected_time
+            if no_motion_time > 20:  # If no motion for 20 seconds
+                display_slideshow()
+                time.sleep(30)  # Wait for slideshow to play for 30 seconds
+                no_motion_time = time.time() - motion_detected_time
+                if no_motion_time > 50:  # If no motion for 50 seconds (20 + 30)
+                    sleep_display()  # Sleep display
+
+        time.sleep(1)  # Check every second
+
+except KeyboardInterrupt:
+    GPIO.cleanup()
